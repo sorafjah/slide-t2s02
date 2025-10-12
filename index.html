@@ -287,17 +287,33 @@
         // --- Firebase初期化と認証 ---
         async function initializeFirebase() {
             try {
+                let firebaseConfig;
+                let appId;
                 const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-                if (!firebaseConfigStr) {
-                    throw new Error("Firebase設定が見つかりません。");
+                if (firebaseConfigStr) {
+                    // 環境変数が存在する場合（推奨される実行環境）
+                    firebaseConfig = JSON.parse(firebaseConfigStr);
+                    appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                } else {
+                    // 環境変数が存在しない場合のフォールバック（GitHub Pagesなど）
+                    console.warn("環境変数が提供されていません。コード内のデフォルトFirebase設定を使用します。");
+                    
+                    firebaseConfig = {
+                        apiKey: "AIzaSyBCRuejBykUMYlz0aug6YfMtTemccvRElc",
+                        authDomain: "slide-t2s.firebaseapp.com",
+                        projectId: "slide-t2s",
+                        storageBucket: "slide-t2s.firebasestorage.app",
+                        messagingSenderId: "712571169987",
+                        appId: "1:712571169987:web:4d01a34961dd961d4e4676",
+                        measurementId: "G-7LTBNQ37HV"
+                    };
+                    appId = 'default-app-id-github';
                 }
                 
                 SLIDES_COLLECTION_PATH = `/artifacts/${appId}/public/data/slides`;
 
-                const firebaseConfig = JSON.parse(firebaseConfigStr);
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
@@ -666,3 +682,5 @@
 
 </body>
 </html>
+
+
