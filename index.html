@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>画像スライドメーカー</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .loader{border:4px solid #f3f3f3;border-top:4px solid #3498db;border-radius:50%;width:40px;height:40px;animation:spin 2s linear infinite}
+    @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+    body,html{min-height:100vh}
+    .view-container{transition:opacity .3s ease-in-out}
+  </style>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+
+  <div class="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+    <div id="error-banner" class="hidden p-4 mb-4 text-sm text-red-800 bg-red-100 rounded-lg" role="alert"></div>
+
+    <div id="app">
+      <header class="mb-6">
+        <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">画像スライドメーカー</h1>
+        <p class="text-gray-600">JSONデータからスライドを作成し、閲覧できます。</p>
+        <div id="auth-status" class="mt-2 text-xs text-gray-500">
+          <p>ステータス: 初期化中...</p>
+          <p>UserID: <span id="user-id-display">未認証</span></p>
+        </div>
+        <div class="mt-4 border-b border-gray-200">
+          <nav class="flex -mb-px space-x-6" aria-label="Tabs">
+            <button id="tab-editor" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600">作成 / 編集モード</button>
+            <button id="tab-viewer" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">閲覧モード</button>
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        <!-- Editor -->
+        <div id="editor-view" class="view-container">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-white p-6 rounded-xl shadow-md space-y-6">
+              <div>
+                <h2 class="text-xl font-semibold mb-3">1. スライドデータの準備</h2>
+                <p class="text-sm text-gray-600 mb-2">以下のGPTsを使って、文章からスライド用のJSONデータを生成できます。</p>
+                <a href="https://chatgpt.com/g/g-68eb6abcec3081aa86a0bb98f47865-tekisutojsonhua" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-800 underline font-medium">テキストJSON化GPTsを開く</a>
+              </div>
+              <div>
+                <label for="json-input" class="block text-lg font-semibold mb-2">2. JSONデータを貼り付け</label>
+                <textarea id="json-input" rows="8" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition" placeholder='[{"text_content":"スライド1の文章","image_url":"画像URL"}, ...]'></textarea>
+                <button id="import-json-btn" class="mt-3 w-full bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-600 transition shadow">スライドをインポート</button>
+              </div>
+              <div class="border-t pt-6">
+                <label for="slide-name" class="block text-lg font-semibold mb-2">3. スライド名の設定</label>
+                <div class="flex flex-col sm:flex-row gap-3">
+                  <input type="text" id="slide-name" class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition" placeholder="例: 科学スライド_01"/>
+                  <button id="load-slides-btn" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition">ロード</button>
+                  <button id="save-slides-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition shadow">保存</button>
+                </div>
+                <div id="delete-slide-container" class="mt-4 text-center hidden">
+                  <span id="delete-slide-link" class="text-xs text-gray-500 hover:underline cursor-pointer">このスライドを完全に削除</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-md">
+              <h2 class="text-xl font-semibold mb-4 text-center">スライドプレビュー & 編集</h2>
+              <div id="editor-slide-container" class="aspect-[16/9] bg-gray-100 rounded-lg flex items-center justify-center p-4 border relative"></div>
+              <div class="flex justify-between items-center mt-4">
+                <button id="editor-prev-btn" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition">&lt; 前へ</button>
+                <span id="editor-slide-counter" class="text-gray-600 font-medium">0 / 0</span>
+                <button id="editor-next-btn" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition">次へ &gt;</button>
+              </div>
+              <div class="mt-4 text-center">
+                <button id="add-slide-btn" class="text-indigo-600 hover:text-indigo-800 font-medium">+ 新しいスライドを追加</button>
+              </div>
+              <div id="slide-edit-form" class="mt-6 border-t pt-6 space-y-4 hidden">
+                <div>
+                  <label for="text-content-input" class="block text-sm font-medium text-gray-700">文章の内容</label>
+                  <textarea id="text-content-input" rows="3" class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                </div>
+                <div>
+                  <label for="image-url-input" class="block text-sm font-medium text-gray-700">画像アドレス (URL)</label>
+                  <input type="text" id="image-url-input" class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="空欄でもOKです"/>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Viewer -->
+        <div id="viewer-view" class="view-container hidden">
+          <div id="viewer-start-screen" class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md text-center">
+            <h2 class="text-2xl font-bold mb-4">スライドを閲覧</h2>
+            <p class="text-gray-600 mb-6">閲覧したいスライドの名前を入力してください。</p>
+            <div class="flex gap-3">
+              <input type="text" id="viewer-slide-name" class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition" placeholder="例: 科学スライド_01"/>
+              <button id="start-viewer-btn" class="bg-indigo-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-600 transition shadow">閲覧開始</button>
+            </div>
+          </div>
+
+          <div id="viewer-slide-screen" class="hidden">
+            <div id="viewer-slide-container" class="aspect-[16/9] bg-white rounded-xl shadow-lg flex flex-col items-center justify-center p-6 border relative overflow-hidden"></div>
+            <div class="flex justify-between items-center mt-6 max-w-lg mx-auto">
+              <button id="viewer-prev-btn" class="bg-white text-gray-800 font-bold py-3 px-6 rounded-full hover:bg-gray-100 transition shadow-md">&lt; 前へ</button>
+              <span id="viewer-slide-counter" class="text-gray-700 font-semibold">0 / 0</span>
+              <button id="viewer-next-btn" class="bg-white text-gray-800 font-bold py-3 px-6 rounded-full hover:bg-gray-100 transition shadow-md">次へ &gt;</button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script type="module">
+    // -------- Firebase Imports --------
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import {
+      getFirestore, collection, addDoc, getDocs, query, where, doc, updateDoc, deleteDoc, setLogLevel
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // -------- Firebase Config --------
+    const firebaseConfig = {
+      apiKey: "AIzaSyBcRuejBykUMYlz0aug6YfMtTemccvRElc",
+      authDomain: "slide-t2s.firebaseapp.com",
+      projectId: "slide-t2s",
+      // ★ FIX: Storage のドメインは appspot.com
+      storageBucket: "slide-t2s.appspot.com",
+      messagingSenderId: "712571169987",
+      appId: "1:712571169987:web:4d01a34961dd961d4e4676"
+    };
+
+    const appId = "default-slide-app";
+    // ★ FYI: custom tokenは使わないので null のままでOK
+    const SLIDES_COLLECTION_SEGMENTS = ["artifacts", appId, "public", "data", "slides"]; // ★ FIX: 先頭スラッシュをやめて各セグメントで指定
+    // const SLIDES_COLLECTION_PATH = `/artifacts/${appId}/public/data/slides`; // ← NG: 先頭 '/' は不可
+
+    // -------- State --------
+    let app, db, auth;
+    const state = {
+      mode: "editor",
+      userId: null,
+      editor: { slides: [], currentSlideIndex: -1, slideName: "", loadedDocId: null },
+      viewer: { slides: [], currentSlideIndex: -1, slideName: "" }
+    };
+
+    // -------- DOM --------
+    const dom = {
+      errorBanner: document.getElementById("error-banner"),
+      appContainer: document.getElementById("app"),
+      authStatus: document.getElementById("auth-status"),
+      userIdDisplay: document.getElementById("user-id-display"),
+      tabEditor: document.getElementById("tab-editor"),
+      tabViewer: document.getElementById("tab-viewer"),
+      editorView: document.getElementById("editor-view"),
+      viewerView: document.getElementById("viewer-view"),
+      jsonInput: document.getElementById("json-input"),
+      importJsonBtn: document.getElementById("import-json-btn"),
+      slideNameInput: document.getElementById("slide-name"),
+      loadSlidesBtn: document.getElementById("load-slides-btn"),
+      saveSlidesBtn: document.getElementById("save-slides-btn"),
+      deleteSlideContainer: document.getElementById("delete-slide-container"),
+      deleteSlideLink: document.getElementById("delete-slide-link"),
+      editorSlideContainer: document.getElementById("editor-slide-container"),
+      editorPrevBtn: document.getElementById("editor-prev-btn"),
+      editorNextBtn: document.getElementById("editor-next-btn"),
+      editorSlideCounter: document.getElementById("editor-slide-counter"),
+      addSlideBtn: document.getElementById("add-slide-btn"),
+      slideEditForm: document.getElementById("slide-edit-form"),
+      textContentInput: document.getElementById("text-content-input"),
+      imageUrlInput: document.getElementById("image-url-input"),
+      viewerStartScreen: document.getElementById("viewer-start-screen"),
+      viewerSlideNameInput: document.getElementById("viewer-slide-name"),
+      startViewerBtn: document.getElementById("start-viewer-btn"),
+      viewerSlideScreen: document.getElementById("viewer-slide-screen"),
+      viewerSlideContainer: document.getElementById("viewer-slide-container"),
+      viewerPrevBtn: document.getElementById("viewer-prev-btn"),
+      viewerNextBtn: document.getElementById("viewer-next-btn"),
+      viewerSlideCounter: document.getElementById("viewer-slide-counter"),
+    };
+
+    // -------- Firebase Init & Auth --------
+    async function initializeFirebase(){
+      if(!firebaseConfig || !firebaseConfig.apiKey){
+        dom.authStatus.innerHTML = '<p class="text-red-500">Firebase設定が見つかりません。</p>';
+        console.error("Firebase config is missing.");
+        return;
+      }
+      try{
+        app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+        setLogLevel("debug");
+
+        onAuthStateChanged(auth, (user)=>{
+          if(user){
+            state.userId = user.uid;
+            dom.userIdDisplay.textContent = state.userId;
+            dom.authStatus.innerHTML = '<p class="text-green-600">ステータス: 認証済み</p>';
+          }else{
+            state.userId = null;
+            dom.userIdDisplay.textContent = "未認証";
+            dom.authStatus.innerHTML = '<p class="text-yellow-600">ステータス: 未認証</p>';
+          }
+        });
+
+        // ★ FIX: 匿名認証が有効化されていないケースの明示的ハンドリング
+        try{
+          await signInAnonymously(auth);
+        }catch(e){
+          console.warn("Anonymous sign-in failed:", e);
+          dom.authStatus.innerHTML = `
+            <p class="text-yellow-600">ステータス: 未認証（匿名認証に失敗）</p>
+            <p class="text-xs text-gray-500">Firebaseコンソール &gt; Authentication &gt; Sign-in method で「Anonymous」を有効にしてください。</p>`;
+        }
+
+      }catch(error){
+        console.error("Firebase initialization error:", error);
+        let errorMessage = `Firebase初期化エラー: ${error.message}`;
+        if(error.code === "auth/api-key-not-valid"){
+          errorMessage = `
+            <p class="font-bold text-lg mb-2">Firebase認証エラー：APIキーが不正です。</p>
+            <ul class="mt-1.5 ml-4 list-disc list-inside">
+              <li>Firebaseコンソールの「プロジェクト設定」 &gt; 「マイアプリ」 &gt; Webアプリの <strong>firebaseConfig</strong> を正確に貼り替えてください。</li>
+              <li>APIキーにリファラー制限がある場合、公開ドメイン（例: *.github.io）を許可してください。</li>
+            </ul>`;
+        }
+        dom.errorBanner.innerHTML = errorMessage;
+        dom.errorBanner.classList.remove("hidden");
+        dom.authStatus.innerHTML = `<p class="text-red-500">Firebase初期化エラー</p>`;
+        dom.appContainer.classList.add("hidden");
+      }
+    }
+
+    // -------- Renderers --------
+    function render(){
+      if(state.mode === "editor"){
+        dom.editorView.classList.remove("hidden");
+        dom.viewerView.classList.add("hidden");
+        dom.tabEditor.classList.add("border-indigo-500","text-indigo-600");
+        dom.tabEditor.classList.remove("border-transparent","text-gray-500","hover:text-gray-700","hover:border-gray-300");
+        dom.tabViewer.classList.add("border-transparent","text-gray-500","hover:text-gray-700","hover:border-gray-300");
+        dom.tabViewer.classList.remove("border-indigo-500","text-indigo-600");
+        renderEditor();
+      }else{
+        dom.editorView.classList.add("hidden");
+        dom.viewerView.classList.remove("hidden");
+        dom.tabViewer.classList.add("border-indigo-500","text-indigo-600");
+        dom.tabViewer.classList.remove("border-transparent","text-gray-500","hover:text-gray-700","hover:border-gray-300");
+        dom.tabEditor.classList.add("border-transparent","text-gray-500","hover:text-gray-700","hover:border-gray-300");
+        dom.tabEditor.classList.remove("border-indigo-500","text-indigo-600");
+        renderViewer();
+      }
+    }
+
+    function renderEditor(){
+      const { slides, currentSlideIndex, slideName, loadedDocId } = state.editor;
+      dom.slideNameInput.value = slideName;
+
+      if(slides.length === 0 || currentSlideIndex === -1){
+        dom.editorSlideContainer.innerHTML = `<p class="text-gray-500">スライドがありません。JSONをインポートするか、新しいスライドを追加してください。</p>`;
+        dom.slideEditForm.classList.add("hidden");
+      }else{
+        const slide = slides[currentSlideIndex];
+        dom.editorSlideContainer.innerHTML = createSlideHTML(slide);
+        dom.slideEditForm.classList.remove("hidden");
+        dom.textContentInput.value = slide.text_content || "";
+        dom.imageUrlInput.value = slide.image_url || "";
+      }
+
+      dom.editorSlideCounter.textContent = `${slides.length>0 ? currentSlideIndex+1 : 0} / ${slides.length}`;
+      dom.editorPrevBtn.disabled = currentSlideIndex <= 0;
+      dom.editorNextBtn.disabled = currentSlideIndex >= slides.length - 1;
+
+      dom.deleteSlideContainer.classList.toggle("hidden", !loadedDocId);
+    }
+
+    function renderViewer(){
+      const { slides, currentSlideIndex } = state.viewer;
+      if(slides.length === 0){
+        dom.viewerStartScreen.classList.remove("hidden");
+        dom.viewerSlideScreen.classList.add("hidden");
+      }else{
+        dom.viewerStartScreen.classList.add("hidden");
+        dom.viewerSlideScreen.classList.remove("hidden");
+        const slide = slides[currentSlideIndex];
+        dom.viewerSlideContainer.innerHTML = createSlideHTML(slide, true);
+
+        dom.viewerSlideCounter.textContent = `${currentSlideIndex+1} / ${slides.length}`;
+        dom.viewerPrevBtn.disabled = currentSlideIndex <= 0;
+        dom.viewerNextBtn.disabled = currentSlideIndex >= slides.length - 1;
+        dom.viewerPrevBtn.classList.toggle("opacity-50", dom.viewerPrevBtn.disabled);
+        dom.viewerNextBtn.classList.toggle("opacity-50", dom.viewerNextBtn.disabled);
+      }
+    }
+
+    function createSlideHTML(slide, isViewer=false){
+      const hasImage = slide.image_url && slide.image_url.trim() !== "";
+      const textClass = isViewer
+        ? `text-2xl md:text-3xl lg:text-4xl text-center ${hasImage ? 'absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white p-4' : 'text-gray-800 p-4'}`
+        : 'text-lg p-2';
+
+      let imageHTML = "";
+      if(hasImage){
+        const loaderId = `image-loader-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        imageHTML = `
+          <div class="w-full h-full flex items-center justify-center">
+            <div id="${loaderId}" class="loader"></div>
+            <img src="${slide.image_url}"
+                 class="w-full h-full object-contain hidden"
+                 onload="this.classList.remove('hidden'); const l=document.getElementById('${loaderId}'); if(l) l.style.display='none';"
+                 onerror="this.parentElement.innerHTML='<div class=\\'text-red-500 p-4\\'>画像の読み込みに失敗しました</div>';">
+          </div>`;
+      }else{
+        imageHTML = isViewer ? "" : `<div class="text-center p-4 text-gray-500">画像はありません</div>`;
+      }
+
+      return `
+        <div class="w-full h-full flex flex-col items-center justify-center relative">
+          ${imageHTML}
+          <div class="${textClass}">
+            <p>${(slide.text_content || "").replaceAll("<","&lt;").replaceAll(">","&gt;")}</p>
+          </div>
+        </div>`;
+    }
+
+    // -------- Handlers --------
+    function handleModeChange(newMode){ state.mode = newMode; render(); }
+
+    function handleImportJson(){
+      try{
+        const raw = dom.jsonInput.value.trim();
+        if(!raw){
+          state.editor.slides = [];
+          state.editor.currentSlideIndex = -1;
+          state.editor.slideName = "";
+          state.editor.loadedDocId = null;
+          renderEditor();
+          return;
+        }
+        const slidesData = JSON.parse(raw);
+        if(!Array.isArray(slidesData)) throw new Error("データは配列形式である必要があります。");
+        state.editor.slides = slidesData.map(s => ({ text_content: s.text_content || "", image_url: s.image_url || "" }));
+        state.editor.currentSlideIndex = state.editor.slides.length>0 ? 0 : -1;
+        state.editor.slideName = "";
+        state.editor.loadedDocId = null;
+        alert(`${state.editor.slides.length}件のスライドをインポートしました。`);
+        renderEditor();
+      }catch(e){
+        alert(`JSONの解析に失敗しました: ${e.message}`);
+      }
+    }
+
+    function handleAddSlide(){
+      state.editor.slides.push({ text_content: "新しいスライド", image_url: "" });
+      state.editor.currentSlideIndex = state.editor.slides.length - 1;
+      renderEditor();
+    }
+
+    function handleEditorNav(direction){
+      const { slides, currentSlideIndex } = state.editor;
+      const ni = currentSlideIndex + direction;
+      if(ni>=0 && ni<slides.length){ state.editor.currentSlideIndex = ni; renderEditor(); }
+    }
+
+    function handleSlideUpdate(){
+      const { slides, currentSlideIndex } = state.editor;
+      if(currentSlideIndex !== -1){
+        slides[currentSlideIndex].text_content = dom.textContentInput.value;
+        slides[currentSlideIndex].image_url = dom.imageUrlInput.value;
+        dom.editorSlideContainer.innerHTML = createSlideHTML(slides[currentSlideIndex]);
+      }
+    }
+
+    async function findSlidesByName(name){
+      if(!name || name.trim()==="") return null;
+      const colRef = collection(db, ...SLIDES_COLLECTION_SEGMENTS); // ★ FIX: セグメントで参照
+      const qref = query(colRef, where("slideName","==", name.trim()));
+      const snap = await getDocs(qref);
+      if(!snap.empty) return snap.docs[0];
+      return null;
+    }
+
+    async function handleSaveSlides(){
+      const slideName = dom.slideNameInput.value.trim();
+      if(!slideName){ alert("スライド名を入力してください。"); return; }
+      if(state.editor.slides.length===0){ alert("保存するスライドがありません。"); return; }
+      if(!auth.currentUser){ alert("認証が完了していません。"); return; }
+
+      const dataToSave = {
+        slideName,
+        slides: state.editor.slides,
+        authorId: state.userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      try{
+        dom.saveSlidesBtn.disabled = true;
+        dom.saveSlidesBtn.textContent = "保存中...";
+
+        const existingDoc = await findSlidesByName(slideName);
+        const colRef = collection(db, ...SLIDES_COLLECTION_SEGMENTS);
+
+        if(existingDoc && existingDoc.id !== state.editor.loadedDocId){
+          if(!confirm(`同じ名前のスライド「${slideName}」が既に存在します。上書きしますか？`)){ return; }
+          const docRef = doc(db, ...SLIDES_COLLECTION_SEGMENTS, existingDoc.id);
+          await updateDoc(docRef, dataToSave);
+          state.editor.loadedDocId = existingDoc.id;
+          alert("スライドを上書き保存しました。");
+        }else if(state.editor.loadedDocId){
+          const docRef = doc(db, ...SLIDES_COLLECTION_SEGMENTS, state.editor.loadedDocId);
+          await updateDoc(docRef, dataToSave);
+          alert("スライドを更新しました。");
+        }else{
+          const docRef = await addDoc(colRef, dataToSave);
+          state.editor.loadedDocId = docRef.id;
+          alert("新しいスライドを保存しました。");
+        }
+        state.editor.slideName = slideName;
+
+      }catch(error){
+        console.error("Error saving slides: ", error);
+        alert(`スライドの保存に失敗しました。\n${error?.message || ""}`);
+      }finally{
+        dom.saveSlidesBtn.disabled = false;
+        dom.saveSlidesBtn.textContent = "保存";
+        renderEditor();
+      }
+    }
+
+    async function handleLoadSlides(){
+      const slideName = dom.slideNameInput.value.trim();
+      if(!slideName){ alert("ロードするスライド名を入力してください。"); return; }
+      try{
+        dom.loadSlidesBtn.disabled = true;
+        dom.loadSlidesBtn.textContent = "ロード中...";
+        const slideDoc = await findSlidesByName(slideName);
+        if(slideDoc){
+          const data = slideDoc.data();
+          state.editor.slides = data.slides || [];
+          state.editor.currentSlideIndex = data.slides?.length > 0 ? 0 : -1;
+          state.editor.slideName = data.slideName || slideName;
+          state.editor.loadedDocId = slideDoc.id;
+          dom.jsonInput.value = "";
+          alert(`スライド「${state.editor.slideName}」をロードしました。`);
+        }else{
+          alert(`スライド「${slideName}」が見つかりませんでした。`);
+        }
+      }catch(error){
+        console.error("Error loading slides: ", error);
+        alert(`スライドのロードに失敗しました。\n${error?.message || ""}`);
+      }finally{
+        dom.loadSlidesBtn.disabled = false;
+        dom.loadSlidesBtn.textContent = "ロード";
+        renderEditor();
+      }
+    }
+
+    async function handleDeleteSlides(){
+      const { loadedDocId, slideName } = state.editor;
+      if(!loadedDocId) return;
+      if(confirm(`本当にスライド「${slideName}」を削除しますか？この操作は元に戻せません。`)){
+        try{
+          const ref = doc(db, ...SLIDES_COLLECTION_SEGMENTS, loadedDocId);
+          await deleteDoc(ref);
+          alert("スライドを削除しました。");
+          state.editor = { slides: [], currentSlideIndex: -1, slideName: "", loadedDocId: null };
+          dom.slideNameInput.value = "";
+          renderEditor();
+        }catch(error){
+          console.error("Error deleting slides:", error);
+          alert(`スライドの削除に失敗しました。\n${error?.message || ""}`);
+        }
+      }
+    }
+
+    async function handleStartViewer(){
+      const slideName = dom.viewerSlideNameInput.value.trim();
+      if(!slideName){ alert("スライド名を入力してください。"); return; }
+      try{
+        dom.startViewerBtn.disabled = true;
+        dom.startViewerBtn.textContent = "検索中...";
+        const slideDoc = await findSlidesByName(slideName);
+        if(slideDoc){
+          const data = slideDoc.data();
+          state.viewer.slides = data.slides || [];
+          state.viewer.currentSlideIndex = data.slides?.length > 0 ? 0 : -1;
+          state.viewer.slideName = data.slideName || slideName;
+        }else{
+          alert(`スライド「${slideName}」が見つかりませんでした。`);
+          state.viewer.slides = [];
+        }
+      }catch(e){
+        alert(`スライドの読み込みに失敗しました。\n${e?.message || ""}`);
+      }finally{
+        dom.startViewerBtn.disabled = false;
+        dom.startViewerBtn.textContent = "閲覧開始";
+        renderViewer();
+      }
+    }
+
+    function handleViewerNav(direction){
+      const { slides, currentSlideIndex } = state.viewer;
+      const ni = currentSlideIndex + direction;
+      if(ni>=0 && ni<slides.length){ state.viewer.currentSlideIndex = ni; renderViewer(); }
+    }
+
+    // -------- Listeners --------
+    function setupEventListeners(){
+      dom.tabEditor.addEventListener("click", ()=>handleModeChange("editor"));
+      dom.tabViewer.addEventListener("click", ()=>handleModeChange("viewer"));
+
+      dom.importJsonBtn.addEventListener("click", handleImportJson);
+      dom.addSlideBtn.addEventListener("click", handleAddSlide);
+      dom.editorPrevBtn.addEventListener("click", ()=>handleEditorNav(-1));
+      dom.editorNextBtn.addEventListener("click", ()=>handleEditorNav(1));
+      dom.textContentInput.addEventListener("input", handleSlideUpdate);
+      dom.imageUrlInput.addEventListener("input", handleSlideUpdate);
+      dom.saveSlidesBtn.addEventListener("click", handleSaveSlides);
+      dom.loadSlidesBtn.addEventListener("click", handleLoadSlides);
+      dom.deleteSlideLink.addEventListener("click", handleDeleteSlides);
+
+      dom.startViewerBtn.addEventListener("click", handleStartViewer);
+      dom.viewerPrevBtn.addEventListener("click", ()=>handleViewerNav(-1));
+      dom.viewerNextBtn.addEventListener("click", ()=>handleViewerNav(1));
+    }
+
+    // -------- Main --------
+    async function main(){
+      setupEventListeners();
+      await initializeFirebase();
+      render();
+    }
+    main();
+  </script>
+</body>
+</html>
