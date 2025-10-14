@@ -29,6 +29,7 @@
             opacity: 0;
             transform: translateY(10px);
             pointer-events: none;
+            position: absolute;
         }
 
         /* 通知バナーのトランジション */
@@ -89,8 +90,8 @@
                         <div class="bg-white p-6 rounded-xl shadow-md space-y-6 lg:col-span-2">
                             <div>
                                 <h2 class="text-xl font-semibold mb-3">1. スライドデータの準備</h2>
-                                 <p class="text-sm text-gray-600 mb-2">GPTsを使って文章からスライド用のJSONを生成できます。</p>
-                                 <a href="https://chatgpt.com/g/g-68eb6abcec3081aa86a0bb98f47865-tekisutojsonhua" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-800 underline font-medium">テキストJSON化GPTsを開く</a>
+                                <p class="text-sm text-gray-600 mb-2">GPTsを使って文章からスライド用のJSONを生成できます。</p>
+                                <a href="https://chatgpt.com/g/g-68eb6abcec308191aa86a0bb98f47865-suraitojson" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-800 underline font-medium">テキストJSON化GPTsを開く</a>
                             </div>
                             <div>
                                 <label for="json-input" class="block text-lg font-semibold mb-2">2. JSONデータを貼り付け</label>
@@ -106,29 +107,33 @@
                                     <button id="load-slides-btn" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition">ロード</button>
                                     <button id="save-slides-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition shadow">保存</button>
                                 </div>
-                                 <div id="delete-slide-container" class="mt-4 text-center hidden">
-                                     <span id="delete-slide-link" class="text-xs text-red-500 hover:underline cursor-pointer">このスライドを完全に削除</span>
-                                 </div>
+                                <div id="delete-slide-container" class="mt-4 text-center hidden">
+                                    <span id="delete-slide-link" class="text-xs text-red-500 hover:underline cursor-pointer">このスライドを完全に削除</span>
+                                </div>
                             </div>
                         </div>
 
                         <!-- 右側: スライドプレビューと編集 -->
                         <div class="bg-white p-6 rounded-xl shadow-md lg:col-span-3">
                             <h2 class="text-xl font-semibold mb-4 text-center">スライドプレビュー & 編集</h2>
-                            <div id="editor-slide-container" class="aspect-[16/9] bg-gray-100 rounded-lg flex items-center justify-center p-4 border relative">
+                            <div id="editor-slide-container" class="aspect-[4/3] bg-gray-100 rounded-lg flex items-center justify-center p-4 border relative">
                                 <!-- スライドコンテンツはここに動的に挿入されます -->
                             </div>
-                             <!-- ナビゲーション -->
+                            <!-- ナビゲーション -->
                             <div class="flex justify-between items-center mt-4">
-                                <button id="editor-prev-btn" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition">&lt; 前へ</button>
-                                <span id="editor-slide-counter" class="text-gray-600 font-medium">0 / 0</span>
-                                <button id="editor-next-btn" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition">次へ &gt;</button>
+                                <button id="editor-prev-btn" class="text-2xl text-gray-300 hover:text-gray-500 font-bold py-2 px-4 rounded-lg transition disabled:opacity-20">&lt;</button>
+                                <div class="flex items-center gap-4">
+                                    <button id="move-slide-up-btn" title="上へ移動" class="text-gray-500 hover:text-gray-800 disabled:opacity-20 transition">↑</button>
+                                     <span id="editor-slide-counter" class="text-gray-600 font-medium text-sm">0 / 0</span>
+                                    <button id="move-slide-down-btn" title="下へ移動" class="text-gray-500 hover:text-gray-800 disabled:opacity-20 transition">↓</button>
+                                </div>
+                                <button id="editor-next-btn" class="text-2xl text-gray-300 hover:text-gray-500 font-bold py-2 px-4 rounded-lg transition disabled:opacity-20">&gt;</button>
                             </div>
                             <div class="mt-4 flex justify-center items-center gap-6">
                                 <button id="add-slide-btn" class="text-indigo-600 hover:text-indigo-800 font-medium">+ 新しいスライドを追加</button>
                                 <button id="delete-current-slide-btn" class="text-gray-500 hover:text-gray-700 font-medium">現在のスライドを削除</button>
                             </div>
-                             <!-- 編集フォーム -->
+                            <!-- 編集フォーム -->
                             <div id="slide-edit-form" class="mt-6 border-t pt-6 space-y-4">
                                 <div>
                                     <label for="text-content-input" class="block text-sm font-medium text-gray-700">文章の内容</label>
@@ -150,21 +155,20 @@
                         <p class="text-gray-600 mb-6">閲覧したいスライドの名前を入力してください。</p>
                         <div class="flex gap-3">
                             <input type="text" id="viewer-slide-name" class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition" placeholder="例: 科学スライド_01">
-                            <button id="start-viewer-btn" class="bg-indigo-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-600 transition shadow">閲覧開始</button>
+                            <button id="start-viewer-btn" class="bg-indigo-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-600 transition shadow">スライドをみる</button>
                         </div>
                     </div>
 
-                    <div id="viewer-slide-screen" class="hidden">
-                        <div id="viewer-slide-container" class="aspect-[16/9] bg-white rounded-xl shadow-lg flex flex-col items-center justify-center p-6 border relative overflow-hidden">
+                    <div id="viewer-slide-screen" class="hidden relative">
+                        <div id="viewer-slide-container" class="aspect-[4/3] bg-white rounded-xl shadow-lg flex flex-col items-center justify-center p-6 border relative overflow-hidden mx-auto max-w-5xl">
                             <!-- スライドコンテンツはここに動的に挿入されます -->
                         </div>
                         <!-- ナビゲーション -->
-                        <div class="flex justify-between items-center mt-6 max-w-lg mx-auto">
-                            <button id="viewer-prev-btn" class="bg-white text-gray-800 font-bold py-3 px-6 rounded-full hover:bg-gray-100 transition shadow-md">&lt; 前へ</button>
-                            <span id="viewer-slide-counter" class="text-gray-700 font-semibold">0 / 0</span>
-                            <button id="viewer-next-btn" class="bg-white text-gray-800 font-bold py-3 px-6 rounded-full hover:bg-gray-100 transition shadow-md">次へ &gt;</button>
+                        <div class="absolute top-1/2 -translate-y-1/2 w-full flex justify-between items-center px-2 sm:px-4">
+                             <button id="viewer-prev-btn" class="text-5xl text-gray-300 hover:text-gray-500 font-bold transition disabled:opacity-10">&lt;</button>
+                             <button id="viewer-next-btn" class="text-5xl text-gray-300 hover:text-gray-500 font-bold transition disabled:opacity-10">&gt;</button>
                         </div>
-                         <div class="text-center mt-6">
+                        <div class="text-center mt-6">
                             <button id="viewer-back-btn" class="text-sm text-indigo-600 hover:text-indigo-800">別のスライドを閲覧する</button>
                         </div>
                     </div>
@@ -223,6 +227,8 @@
             editorPrevBtn: document.getElementById('editor-prev-btn'),
             editorNextBtn: document.getElementById('editor-next-btn'),
             editorSlideCounter: document.getElementById('editor-slide-counter'),
+            moveSlideUpBtn: document.getElementById('move-slide-up-btn'),
+            moveSlideDownBtn: document.getElementById('move-slide-down-btn'),
             addSlideBtn: document.getElementById('add-slide-btn'),
             deleteCurrentSlideBtn: document.getElementById('delete-current-slide-btn'),
             slideEditForm: document.getElementById('slide-edit-form'),
@@ -235,7 +241,6 @@
             viewerSlideContainer: document.getElementById('viewer-slide-container'),
             viewerPrevBtn: document.getElementById('viewer-prev-btn'),
             viewerNextBtn: document.getElementById('viewer-next-btn'),
-            viewerSlideCounter: document.getElementById('viewer-slide-counter'),
             viewerBackBtn: document.getElementById('viewer-back-btn'),
         };
 
@@ -245,7 +250,6 @@
         function showNotification(message, type = 'info', duration = 3000) {
             dom.notificationMessage.textContent = message;
             
-            // タイプに応じて色を変更
             dom.notificationBanner.className = 'fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-md p-4 mt-4 z-50 rounded-lg shadow-lg'; // Reset classes
             if (type === 'success') {
                 dom.notificationBanner.classList.add('bg-green-100', 'text-green-800');
@@ -388,6 +392,9 @@
             dom.editorSlideCounter.textContent = `${slides.length > 0 ? currentSlideIndex + 1 : 0} / ${slides.length}`;
             dom.editorPrevBtn.disabled = currentSlideIndex <= 0;
             dom.editorNextBtn.disabled = currentSlideIndex >= slides.length - 1;
+            dom.moveSlideUpBtn.disabled = currentSlideIndex <= 0;
+            dom.moveSlideDownBtn.disabled = currentSlideIndex >= slides.length - 1;
+
             dom.deleteSlideContainer.classList.toggle('hidden', !loadedDocId);
         }
 
@@ -401,11 +408,8 @@
                 dom.viewerSlideScreen.classList.remove('hidden');
                 const slide = slides[currentSlideIndex];
                 dom.viewerSlideContainer.innerHTML = createSlideHTML(slide, true);
-                dom.viewerSlideCounter.textContent = `${currentSlideIndex + 1} / ${slides.length}`;
                 dom.viewerPrevBtn.disabled = currentSlideIndex <= 0;
                 dom.viewerNextBtn.disabled = currentSlideIndex >= slides.length - 1;
-                dom.viewerPrevBtn.classList.toggle('opacity-50', dom.viewerPrevBtn.disabled);
-                dom.viewerNextBtn.classList.toggle('opacity-50', dom.viewerNextBtn.disabled);
             }
         }
         
@@ -423,15 +427,15 @@
                                      class="max-w-full max-h-full object-contain"
                                      onerror="this.parentElement.innerHTML = '<div class=\\'w-full h-full flex items-center justify-center text-gray-500\\'>画像表示エラー</div>';">
                             </div>
-                            <div class="w-full p-6 bg-white border-t">
-                                <p class="text-xl md:text-2xl text-center break-words text-gray-800">${textHTML}</p>
+                            <div class="w-full p-6 bg-white">
+                                <p class="text-3xl md:text-4xl text-center break-words text-gray-800">${textHTML}</p>
                             </div>
                         </div>
                     `;
                 } else {
                     return `
                         <div class="w-full h-full flex items-center justify-center p-8 bg-white rounded-xl">
-                             <p class="text-2xl md:text-3xl lg:text-4xl text-center break-words text-gray-800">${textHTML}</p>
+                            <p class="text-4xl md:text-5xl text-center break-words text-gray-800">${textHTML}</p>
                         </div>
                     `;
                 }
@@ -440,7 +444,6 @@
             // --- Editor Mode ---
             else {
                 if (hasImage) {
-                    // With image, text at the bottom
                     return `
                         <div class="w-full h-full flex flex-col justify-between bg-gray-50 rounded-lg overflow-hidden border">
                             <div class="w-full flex-grow flex items-center justify-center overflow-hidden p-2">
@@ -452,7 +455,6 @@
                         </div>
                     `;
                 } else {
-                    // Text only, centered
                     return `
                         <div class="w-full h-full flex items-center justify-center bg-gray-50 rounded-lg border p-4">
                             <p class="text-center text-gray-800 break-words">${textHTML}</p>
@@ -475,21 +477,17 @@
                     showNotification('JSONデータが空です。', 'error');
                     return;
                 }
-                 // Remove trailing commas from objects and arrays, which is a common JSON error.
                 jsonText = jsonText.replace(/,(?=\s*[}\]])/g, '');
 
                 const slidesData = JSON.parse(jsonText);
                 if (!Array.isArray(slidesData)) {
                     throw new Error("データは配列形式である必要があります。");
                 }
-                // Be more flexible with property names from JSON
                 state.editor.slides = slidesData.map(s => {
-                    // text_content, text, content, 文章, テキスト などのキーを認識
                     const text = s.text_content || s.text || s.content || s.文章 || s.テキスト || "";
-                    // image_url, imageUrl, image, 画像URL, 画像 などのキーを認識
                     const image = s.image_url || s.imageUrl || s.image || s.画像URL || s.画像 || "";
                     return { 
-                        text_content: String(text), // 値を文字列に変換して安全性を高める
+                        text_content: String(text),
                         image_url: String(image) 
                     };
                 });
@@ -520,9 +518,7 @@
 
             slides.splice(currentSlideIndex, 1);
 
-            // Adjust index after deletion
             if (currentSlideIndex >= slides.length) {
-                // If the last slide was deleted, move to the new last slide
                 state.editor.currentSlideIndex = slides.length - 1;
             }
             
@@ -538,6 +534,22 @@
                 renderEditor();
             }
         }
+        
+        function handleMoveSlide(direction) {
+            const { slides, currentSlideIndex } = state.editor;
+            const targetIndex = currentSlideIndex + direction;
+
+            if (targetIndex < 0 || targetIndex >= slides.length) {
+                return; // 移動範囲外
+            }
+            
+            // 配列の要素を入れ替え
+            [slides[currentSlideIndex], slides[targetIndex]] = [slides[targetIndex], slides[currentSlideIndex]];
+            
+            state.editor.currentSlideIndex = targetIndex;
+            renderEditor();
+        }
+
 
         function handleSlideUpdate() {
             const { slides, currentSlideIndex } = state.editor;
@@ -549,7 +561,7 @@
         }
         
         async function findSlidesByName(name) {
-             if (!name || name.trim() === '') return null;
+            if (!name || name.trim() === '') return null;
             const q = query(collection(db, SLIDES_COLLECTION_PATH), where("slideName", "==", name.trim()));
             const querySnapshot = await getDocs(q);
             if (!querySnapshot.empty) {
@@ -697,7 +709,7 @@
                 showNotification("スライドの読み込みに失敗しました。", 'error');
             } finally {
                 dom.startViewerBtn.disabled = false;
-                dom.startViewerBtn.textContent = "閲覧開始";
+                dom.startViewerBtn.textContent = "スライドをみる";
                 renderViewer();
             }
         }
@@ -712,12 +724,10 @@
         }
         
         function handleViewerBack() {
-            // Reset viewer state
             state.viewer.slides = [];
             state.viewer.currentSlideIndex = -1;
             state.viewer.slideName = '';
-            dom.viewerSlideNameInput.value = ''; // Clear input field
-            // Re-render the viewer which will now show the start screen
+            dom.viewerSlideNameInput.value = ''; 
             renderViewer();
         }
 
@@ -729,6 +739,8 @@
             dom.deleteCurrentSlideBtn.addEventListener('click', handleDeleteCurrentSlide);
             dom.editorPrevBtn.addEventListener('click', () => handleEditorNav(-1));
             dom.editorNextBtn.addEventListener('click', () => handleEditorNav(1));
+            dom.moveSlideUpBtn.addEventListener('click', () => handleMoveSlide(-1));
+            dom.moveSlideDownBtn.addEventListener('click', () => handleMoveSlide(1));
             dom.textContentInput.addEventListener('input', handleSlideUpdate);
             dom.imageUrlInput.addEventListener('input', handleSlideUpdate);
             dom.saveSlidesBtn.addEventListener('click', handleSaveSlides);
@@ -751,4 +763,3 @@
 
 </body>
 </html>
-
