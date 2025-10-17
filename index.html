@@ -102,16 +102,6 @@
                 </div>
               </div>
 
-              <!-- 追加・削除ボタン行 -->
-              <div class="mt-4 flex items-center justify-between">
-                <button id="add-slide-btn" class="inline-flex items-center gap-1 px-3 py-2 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 text-sm">
-                  ＋ スライドの追加
-                </button>
-                <button id="remove-slide-btn" class="inline-flex items-center gap-1 px-3 py-2 rounded-md bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 text-sm">
-                  － スライドの削除
-                </button>
-              </div>
-
               <!-- デッキ全体の文字サイズ -->
               <div class="mt-6 border-t pt-6">
                 <label class="block text-lg font-semibold mb-2">閲覧モードの文字サイズ（デッキ共通）</label>
@@ -144,12 +134,22 @@
                 </div>
               </div>
 
+              <!-- 追加・削除ボタン（プレビュー直下） -->
+              <div class="mt-4 flex items-center justify-between">
+                <button id="add-slide-btn" class="inline-flex items-center gap-1 px-3 py-2 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 text-sm">
+                  ＋ スライドの追加
+                </button>
+                <button id="remove-slide-btn" class="inline-flex items-center gap-1 px-3 py-2 rounded-md bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 text-sm">
+                  － スライドの削除
+                </button>
+              </div>
+
               <!-- 編集フォーム -->
               <div id="slide-edit-form" class="mt-4">
                 <div class="space-y-4">
                   <div>
                     <label for="text-content-input" class="block text-sm font-medium text-gray-700">文章内容</label>
-                    <textarea id="text-content-input" rows="3" class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                    <textarea id="text-content-input" rows="4" class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"></textarea>
                   </div>
                   <div>
                     <label for="image-url-input" class="block text-sm font-medium text-gray-700">画像 URL (任意)</label>
@@ -267,6 +267,9 @@
       viewerPrevArrow: document.getElementById('viewer-prev-arrow'),
       viewerNextArrow: document.getElementById('viewer-next-arrow'),
       viewerBackBtn: document.getElementById('viewer-back-btn'),
+      // 👇 追加（エラーの主因だった参照）
+      viewerStartScreen: document.getElementById('viewer-start-screen'),
+      viewerSlideScreen: document.getElementById('viewer-slide-screen'),
     };
 
     function showNotification(message, type = 'info', duration = 3000) {
@@ -874,7 +877,7 @@
           state.viewer.slideName = data.slideName;
           state.viewerSettings = data.viewerSettings || { cpl: 25, minPx: 18, maxPx: 56 };
         } else {
-          showNotification(`「${nm}」が見つかりませんでした。`, 'error');
+          showNotification("スライドが見つかりませんでした。", 'error');
           state.viewer.slides = [];
         }
       } catch (e) {
