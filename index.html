@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>スライドメーカー（完全版）</title>
+  <title>スライドメーカー（修正版フル）</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .loader{border:4px solid #f3f3f3;border-top:4px solid #4f46e5;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite}
@@ -98,20 +98,21 @@
                   <button id="save-slides-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition shadow">保存</button>
                 </div>
                 <div id="delete-slide-container" class="mt-4 text-center hidden">
-                  <span id="delete-slide-link" class="text-xs text-red-500 hover:underline cursor-pointer">このスライドを完全に削除</span>
+                  <span id="delete-slide-link" class="text-xs text-red-500 hover:underline cursor-pointer">このスライド（ドキュメント）を完全に削除</span>
                 </div>
               </div>
 
+              <!-- 追加・削除ボタン行 -->
               <div class="mt-4 flex items-center justify-between">
                 <button id="add-slide-btn" class="inline-flex items-center gap-1 px-3 py-2 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 text-sm">
                   ＋ スライドの追加
                 </button>
-
                 <button id="remove-slide-btn" class="inline-flex items-center gap-1 px-3 py-2 rounded-md bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 text-sm">
                   － スライドの削除
                 </button>
               </div>
 
+              <!-- デッキ全体の文字サイズ -->
               <div class="mt-6 border-t pt-6">
                 <label class="block text-lg font-semibold mb-2">閲覧モードの文字サイズ（デッキ共通）</label>
                 <div class="flex flex-wrap gap-2 mb-3" id="viewer-cpl-presets">
@@ -143,8 +144,8 @@
                 </div>
               </div>
 
-              <div class="mt-4">
-                <!-- 編集スライドのテキスト／画像入力フォーム -->
+              <!-- 編集フォーム -->
+              <div id="slide-edit-form" class="mt-4">
                 <div class="space-y-4">
                   <div>
                     <label for="text-content-input" class="block text-sm font-medium text-gray-700">文章内容</label>
@@ -154,8 +155,9 @@
                     <label for="image-url-input" class="block text-sm font-medium text-gray-700">画像 URL (任意)</label>
                     <input type="text" id="image-url-input" class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="https://...">
                   </div>
+                  <!-- このスライドだけの文字サイズ -->
                   <div class="pt-2">
-                    <label class="block text-sm font-semibold text-gray-700 mb-1">このスライドだけの文字サイズ調整</label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">このスライドだけの文字サイズ（閲覧モード）</label>
                     <div class="flex items-center gap-2">
                       <button id="slide-cpl-up" class="px-2 py-1 text-xs border rounded">▲</button>
                       <button id="slide-cpl-down" class="px-2 py-1 text-xs border rounded">▼</button>
@@ -164,6 +166,8 @@
                     </div>
                     <p class="text-[11px] text-gray-500 mt-1">※ ▲で文字を大きく／▼で小さく（CPLで調整）</p>
                   </div>
+
+                  <!-- 並べ替え -->
                   <div class="pt-4">
                     <h3 class="text-sm font-semibold text-gray-700 mb-2">順番変更（ドラッグ／▲▼）</h3>
                     <ul id="reorder-list" class="divide-y divide-gray-200 rounded-lg border border-gray-200 overflow-hidden"></ul>
@@ -295,7 +299,7 @@
       if (!raw) return { url: "", ok: false, reason: "empty" };
       const url = String(raw).trim();
 
-      // Google Photos 埋め込めない
+      // Google Photos はページURL／共有URLともに画像直リンク不可
       if (/^https?:\/\/photos\.google\.com\/photo\//.test(url))
         return { url: "", ok: false, reason: "google_photos_page" };
       if (/^https?:\/\/photos\.app\.goo\.gl\//.test(url))
@@ -304,18 +308,21 @@
       // Google Drive パターン
       let m = url.match(/https?:\/\/drive\.google\.com\/file\/d\/([^/]+)\//);
       if (m && m[1]) return { url: `https://drive.google.com/uc?export=view&id=${m[1]}`, ok: true };
+
       m = url.match(/https?:\/\/drive\.google\.com\/open\?id=([^&]+)/);
       if (m && m[1]) return { url: `https://drive.google.com/uc?export=view&id=${m[1]}`, ok: true };
-      m = url.match(/https?:\/\/drive\.google\..com\/uc\?(?:[^#]*&)?id=([^&]+)/);
+
+      // id=xxxxx 形式
+      m = url.match(/https?:\/\/drive\.google\.com\/uc\?(?:[^#]*&)?id=([^&]+)/);
       if (m && m[1]) return { url: `https://drive.google.com/uc?export=view&id=${m[1]}`, ok: true };
 
-      // Google Photos CDN (lh3) OK
+      // Google Photos CDN (lh3) は直リンクOK（サイズ指定を付与）
       if (/^https?:\/\/lh3\.googleusercontent\.com\/[A-Za-z0-9_\-]/.test(url)) {
         if (!/[?=]/.test(url)) return { url: url + "=w1600", ok: true };
         return { url, ok: true };
       }
 
-      // fife リンク（不安定可能性あり）
+      // fife リンク（不安定：とりあえず大きめに置換）
       if (/^https?:\/\/photos\.fife\.usercontent\.google\.com\//.test(url)) {
         const replaced = url.replace(/\/s\d+(-no)?/i, "/s1600-no");
         return { url: replaced, ok: true, warning: "fife_unstable" };
@@ -328,20 +335,20 @@
     function getEmbedSrc(raw) {
       const { url, ok, reason, warning } = normalizeImageUrl(raw || "");
       if (!ok) {
-        if (reason === "google_photos_page" || reason === "google_photos_share_link) {
-          showNotification("GoogleフォトのURLは埋め込めません。Driveリンクを使ってください", "error", 5000);
-        }
-        if (reason === "invalid") {
-          showNotification("不正な画像URLです。https:// から始まる形式にしてください", "error");
+        if (reason === "google_photos_page" || reason === "google_photos_share_link") {
+          showNotification("GoogleフォトのURLはそのまま埋め込めません。Driveのリンクにしてください。", "error", 5000);
+        } else if (reason === "invalid") {
+          showNotification("不正な画像URLです。https:// から始まる形式にしてください。", "error");
         }
         return "";
       }
       if (warning === "fife_unstable") {
-        showNotification("Googleフォト一時リンク使用中。将来表示できなくなる可能性あり", "info", 4000);
+        showNotification("Googleフォトの一時リンクを使用中。将来表示できなくなる可能性があります。", "info", 4000);
       }
       return url;
     }
 
+    // Drive画像のフォールバック（uc? が失敗した場合に thumbnail API に切替）
     window.__drvFallback = function(imgEl) {
       try {
         const m = (imgEl?.src || "").match(/\/uc\?export=view&id=([^&]+)/);
@@ -355,6 +362,13 @@
         imgEl.outerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-500">画像表示エラー</div>';
       }
     };
+
+    // 現在スライドの有効CPL（スライドcpl優先→デッキcpl）
+    function getEffectiveCpl(slide) {
+      const deck = state.viewerSettings?.cpl ?? 25;
+      const ov = (slide && typeof slide.cpl === 'number') ? slide.cpl : null;
+      return (ov ?? deck);
+    }
 
     // 自動文字サイズ（閲覧モード）
     function autoSizeViewerText() {
@@ -383,7 +397,8 @@
       p.style.fontSize = size + 'px';
     }
 
-    function initializeFirebase() {
+    // Firebase初期化
+    async function initializeFirebase() {
       try {
         let firebaseConfig, appId;
         const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
@@ -421,9 +436,9 @@
           }
         });
         if (initialAuthToken) {
-          signInWithCustomToken(auth, initialAuthToken);
+          await signInWithCustomToken(auth, initialAuthToken);
         } else {
-          signInAnonymously(auth);
+          await signInAnonymously(auth);
         }
       } catch (e) {
         console.error(e);
@@ -431,12 +446,6 @@
         dom.authStatus.innerHTML = `<p class="text-red-500">初期化エラー</p>`;
         document.querySelectorAll('button, input, textarea').forEach(el => el.disabled = true);
       }
-    }
-
-    function getEffectiveCpl(slide) {
-      const deck = state.viewerSettings?.cpl ?? 25;
-      const ov = (slide && typeof slide.cpl === 'number') ? slide.cpl : null;
-      return (ov ?? deck);
     }
 
     function render() {
@@ -461,9 +470,7 @@
       const textHTML = (slide.text_content || "").replace(/\n/g, '<br>');
 
       const imgTag = src
-        ? `<img src="${src}" class="max-w-full max-h-full object-contain"
-             alt=""
-             onerror="window.__drvFallback && window.__drvFallback(this)">`
+        ? `<img src="${src}" class="max-w-full max-h-full object-contain" alt="" onerror="window.__drvFallback && window.__drvFallback(this)">`
         : "";
 
       if (isViewer) {
@@ -516,7 +523,6 @@
 
       if (slides.length === 0 || currentSlideIndex === -1) {
         dom.editorSlideContainer.innerHTML = `<p class="text-gray-500">スライドがありません。JSONをインポートするか、新しいスライドを追加してください。</p>`;
-        // 編集用フォームを隠す（テキスト／画像入力欄など）
         document.getElementById('slide-edit-form')?.classList.add('hidden');
       } else {
         const slide = slides[currentSlideIndex];
@@ -658,6 +664,15 @@
       render();
     }
 
+    function handleEditorNav(dir) {
+      const { slides } = state.editor;
+      const newIndex = state.editor.currentSlideIndex + dir;
+      if (newIndex >= 0 && newIndex < slides.length) {
+        state.editor.currentSlideIndex = newIndex;
+        renderEditor();
+      }
+    }
+
     function handleImportJson() {
       try {
         let jsonText = dom.jsonInput.value.trim();
@@ -665,6 +680,7 @@
           showNotification('JSONデータが空です。', 'error');
           return;
         }
+        // 末尾カンマ対策（必要なら）
         jsonText = jsonText.replace(/,(?=\s*[}\]])/g, '');
         const slidesData = JSON.parse(jsonText);
         if (!Array.isArray(slidesData)) throw new Error("配列形式である必要があります。");
@@ -687,11 +703,12 @@
 
     async function findSlidesByName(name) {
       if (!name || name.trim() === "") return null;
-      const q = query(collection(db, SLIDES_COLLECTION_PATH), where("slideName", "==", name.trim()));
-      const snap = await getDocs(q);
+      const qy = query(collection(db, SLIDES_COLLECTION_PATH), where("slideName", "==", name.trim()));
+      const snap = await getDocs(qy);
       return snap.empty ? null : snap.docs[0];
     }
 
+    // 望む動き：別名保存（Aを残す）
     async function handleSaveSlides() {
       const slideName = dom.slideNameInput.value.trim();
       if (!slideName) {
@@ -738,11 +755,7 @@
           // 新規保存パス
           if (existingDoc) {
             const ok = await showConfirm(`「${slideName}」は既に存在します。上書きしますか？`);
-            if (!ok) {
-              dom.saveSlidesBtn.disabled = false;
-              dom.saveSlidesBtn.textContent = "保存";
-              return;
-            }
+            if (!ok) return;
             await updateDoc(doc(db, SLIDES_COLLECTION_PATH, existingDoc.id), dataToSave);
             state.editor.loadedDocId = existingDoc.id;
             state.editor.slideName = slideName;
@@ -760,11 +773,7 @@
             // 名前を変えて保存 → 別名保存パス
             if (existingDoc) {
               const ok = await showConfirm(`「${slideName}」は既に存在します。上書きしますか？（元のスライドは保持されます）`);
-              if (!ok) {
-                dom.saveSlidesBtn.disabled = false;
-                dom.saveSlidesBtn.textContent = "保存";
-                return;
-              }
+              if (!ok) return;
               await updateDoc(doc(db, SLIDES_COLLECTION_PATH, existingDoc.id), dataToSave);
               state.editor.loadedDocId = existingDoc.id;
               state.editor.slideName = slideName;
@@ -780,11 +789,7 @@
             // 名前変えてない → 通常上書き
             if (existingDoc && existingDoc.id !== loadedId) {
               const ok = await showConfirm(`同じ名前の別スライドがあります。上書きしますか？`);
-              if (!ok) {
-                dom.saveSlidesBtn.disabled = false;
-                dom.saveSlidesBtn.textContent = "保存";
-                return;
-              }
+              if (!ok) return;
               await updateDoc(doc(db, SLIDES_COLLECTION_PATH, existingDoc.id), dataToSave);
               state.editor.loadedDocId = existingDoc.id;
               state.editor.slideName = slideName;
@@ -827,6 +832,7 @@
           state.editor.slideName = data.slideName;
           state.editor.loadedDocId = docSnap.id;
 
+          // デッキ設定も同期
           state.viewerSettings = data.viewerSettings || { cpl: 25, minPx: 18, maxPx: 56 };
           dom.viewerCplRange.value = String(state.viewerSettings.cpl);
           dom.viewerCplLabel.textContent = String(state.viewerSettings.cpl);
@@ -880,26 +886,7 @@
       }
     }
 
-    function handleViewerNav(dir) {
-      const { slides } = state.viewer;
-      const newIndex = state.viewer.currentSlideIndex + dir;
-      if (newIndex >= 0 && newIndex < slides.length) {
-        state.viewer.currentSlideIndex = newIndex;
-        renderViewer();
-      }
-    }
-
-    function handleViewerBack() {
-      state.viewer.slides = [];
-      state.viewer.currentSlideIndex = -1;
-      state.viewer.slideName = '';
-      dom.viewerSlideNameInput.value = '';
-      renderViewer();
-    }
-
-    function clamp(v, min, max) {
-      return Math.max(min, Math.min(max, v));
-    }
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
     function setupViewerSizeControls() {
       dom.viewerCplPresets?.addEventListener('click', (e) => {
@@ -914,7 +901,7 @@
         dom.viewerCplRange.value = String(state.viewerSettings.cpl);
         dom.viewerCplLabel.textContent = String(state.viewerSettings.cpl);
         dom.deckCplInline.textContent = state.viewerSettings.cpl;
-        autoSizeViewerText();
+        if (!dom.viewerView.classList.contains('hidden')) autoSizeViewerText();
         renderEditor();
       });
       dom.viewerCplRange?.addEventListener('input', () => {
@@ -929,26 +916,21 @@
 
     function setupPerSlideSizeControls() {
       dom.slideCplUp.addEventListener('click', () => {
-        const i = state.editor.currentSlideIndex;
-        if (i < 0) return;
-        const s = state.editor.slides[i];
-        const base = getEffectiveCpl(s);
+        const i = state.editor.currentSlideIndex; if (i < 0) return;
+        const s = state.editor.slides[i]; const base = getEffectiveCpl(s);
         s.cpl = clamp((typeof s.cpl === 'number' ? s.cpl : base) - 1, CPL_MIN, CPL_MAX);
         renderEditor();
       });
       dom.slideCplDown.addEventListener('click', () => {
-        const i = state.editor.currentSlideIndex;
-        if (i < 0) return;
-        const s = state.editor.slides[i];
-        const base = getEffectiveCpl(s);
+        const i = state.editor.currentSlideIndex; if (i < 0) return;
+        const s = state.editor.slides[i]; const base = getEffectiveCpl(s);
         s.cpl = clamp((typeof s.cpl === 'number' ? s.cpl : base) + 1, CPL_MIN, CPL_MAX);
         renderEditor();
       });
       dom.slideCplReset.addEventListener('click', () => {
-        const i = state.editor.currentSlideIndex;
-        if (i < 0) return;
+        const i = state.editor.currentSlideIndex; if (i < 0) return;
         const s = state.editor.slides[i];
-        delete s.cpl;
+        delete s.cpl; // デッキ基準に戻す
         renderEditor();
       });
     }
@@ -956,18 +938,22 @@
     function setupEventListeners() {
       dom.tabEditor.addEventListener('click', () => handleModeChange('editor'));
       dom.tabViewer.addEventListener('click', () => handleModeChange('viewer'));
+
       dom.importJsonBtn.addEventListener('click', handleImportJson);
       dom.textContentInput.addEventListener('input', () => { handleSlideUpdate(); });
       dom.imageUrlInput.addEventListener('input', () => { handleSlideUpdate(); });
 
-      dom.editorPrevArrow.addEventListener('click', () => handleViewerNav(-1)); // optional
-      dom.editorNextArrow.addEventListener('click', () => handleViewerNav(1)); // optional
+      // 編集側の矢印
+      dom.editorPrevArrow.addEventListener('click', () => handleEditorNav(-1));
+      dom.editorNextArrow.addEventListener('click', () => handleEditorNav(1));
 
       dom.saveSlidesBtn.addEventListener('click', handleSaveSlides);
       dom.loadSlidesBtn.addEventListener('click', handleLoadSlides);
+
       dom.deleteSlideLink.addEventListener('click', async () => {
-        const ok = await showConfirm("このスライドを完全に削除しますか？この操作は戻せません。");
-        if (ok) {
+        const ok = await showConfirm("このスライド（ドキュメント）を完全に削除しますか？この操作は戻せません。");
+        if (!ok) return;
+        try {
           if (state.editor.loadedDocId) {
             await deleteDoc(doc(db, SLIDES_COLLECTION_PATH, state.editor.loadedDocId));
             state.editor.slides = [];
@@ -978,6 +964,9 @@
             renderEditor();
             showNotification("スライドを削除しました。", 'success');
           }
+        } catch (e) {
+          console.error(e);
+          showNotification("削除に失敗しました。", 'error');
         }
       });
 
@@ -1007,6 +996,23 @@
         renderReorderList();
         autoSizeEditorText();
       }
+    }
+
+    function handleViewerNav(dir) {
+      const { slides } = state.viewer;
+      const newIndex = state.viewer.currentSlideIndex + dir;
+      if (newIndex >= 0 && newIndex < slides.length) {
+        state.viewer.currentSlideIndex = newIndex;
+        renderViewer();
+      }
+    }
+
+    function handleViewerBack() {
+      state.viewer.slides = [];
+      state.viewer.currentSlideIndex = -1;
+      state.viewer.slideName = '';
+      dom.viewerSlideNameInput.value = '';
+      renderViewer();
     }
 
     async function main() {
